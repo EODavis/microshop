@@ -1,0 +1,80 @@
+x-service: &service
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  env_file: .env
+  restart: unless-stopped
+  depends_on:
+    postgres: { condition: service_healthy }  
+    rabbitmq: { condition: service_healthy }
+
+x-health: &health
+  test: ["CMD", "wget", "-q0-", "http://127.0.0.1:3000/health"]
+  interval: 5s
+  timeout: 3s
+  retries: 10
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init-dbs.sql:/docker-entrypoint-initdb.d/init-dbs.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+rabbitmq:
+  image: rabbitmq:3.13-management-alpine
+  environment:
+    RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+    RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+  ports:
+    - "15672:15672"
+  healthcheck:
+    test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+    interval: 10s
+    timeout: 5s
+    retries: 10
+
+auth:
+  <<: *service
+  command: node services/auth/index.js
+  environment: { DB_NAME: auth_db }
+  healthcheck: *health
+
+catalog:
+  <<: *service
+  command: node services/catalog/index.js
+  environment: { DB_NAME: catalog_db }
+  healthcheck: *health
+
+order:
+  <<: *service
+  command: node services/order/index.js
+  environment: { DB_NAME: order_db }
+  healthcheck: *health
+
+notifier:
+  <<: *service
+  command: node services/notifier/index.js
+
+gateway:
+  <<: *service
+  command: node services/gateway/index.js
+  ports:
+    - "8080:3000"
+  depends_on:
+    auth: { condition: service_healthy }
+    catalog: { condition: service_healthy}
+    order: { condition: service_healthy}
+  healthcheck: *health
+
+volumes:
+  pgdata:

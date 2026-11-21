@@ -1,0 +1,22 @@
+{
+  "name": "microshop",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:e2e": "node --test tests/e2e.test.js"
+  },
+  "keywords": [],
+  "type": "module",
+  "dependencies": {
+    "amqplib": "^2.2.0",
+    "bcryptjs": "^3.0.3",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "http-proxy-middleware": "^4.2.0",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.23.1",
+    "zod": "^4.6.5"
+  }
+}
